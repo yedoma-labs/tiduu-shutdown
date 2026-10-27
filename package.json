@@ -1,6 +1,6 @@
 {
 	"name": "@yedoma-labs/tiduu-shutdown",
-	"version": "0.0.0",
+	"version": "1.0.0",
 	"description": "Framework-agnostic graceful shutdown for Node.js: ordered teardown with per-step deadlines and HTTP keep-alive draining",
 	"type": "module",
 	"main": "./dist/index.cjs",
