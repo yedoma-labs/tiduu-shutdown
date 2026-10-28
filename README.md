@@ -10,8 +10,6 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-7-blue.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> **tiduu** (*tiduu*) — Yakutian (Sakha) for "(noch zu bestätigen)"
-
 Framework-agnostic graceful shutdown for Node.js: ordered teardown with per-step deadlines and HTTP keep-alive draining.
 
 Zero runtime dependencies. Works with `node:http`, Express, Fastify, or anything that exposes an `http.Server`.
