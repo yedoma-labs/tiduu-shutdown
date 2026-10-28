@@ -29,7 +29,7 @@ export function createShutdown(options: ShutdownOptions = {}): Shutdown {
 	const steps: Step[] = [];
 	const names = new Set<string>();
 	let runPromise: Promise<ShutdownReport> | undefined;
-	let finished = false;
+	let signalReceived = false;
 	let exitCalled = false;
 	// Set while the run loop is active. Stops the loop early with the given cause.
 	let interruptRun: ((cause: string) => void) | undefined;
@@ -117,7 +117,6 @@ export function createShutdown(options: ShutdownOptions = {}): Shutdown {
 		} finally {
 			clearTimeout(deadline);
 			interruptRun = undefined;
-			finished = true;
 		}
 
 		return { steps: reports, forced };
@@ -143,20 +142,18 @@ export function createShutdown(options: ShutdownOptions = {}): Shutdown {
 	}
 
 	function onSignal(signal: string): void {
-		if (finished) {
-			return;
-		}
-		if (runPromise === undefined) {
-			// First signal: start the teardown and exit once it has completed.
+		if (!signalReceived) {
+			// First signal: join the teardown (started now, or by an earlier manual run()) and exit once it has completed.
+			signalReceived = true;
 			void run(signal).then((report) => {
 				const clean = !report.forced && report.steps.every((step) => step.status === "ok");
 				exitOnce(clean ? 0 : 1);
 			});
 			return;
 		}
-		// Second signal while shutting down: stop waiting and exit immediately.
+		// Second signal: stop waiting and exit immediately.
 		interruptRun?.(`forced by a second ${signal}`);
-		void runPromise.then(() => exitOnce(1));
+		void runPromise?.then(() => exitOnce(1));
 	}
 
 	function exitOnce(code: number): void {

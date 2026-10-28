@@ -1,19 +1,22 @@
 # @yedoma-labs/tiduu-shutdown
 
-Framework-agnostic graceful shutdown for Node.js. It tears your resources down in the right order, with a deadline for each step and a deadline for the whole shutdown, and it drains HTTP keep-alive connections properly.
+<picture>
+  <source media="(max-width: 640px)" srcset="https://raw.githubusercontent.com/yedoma-labs/assets/main/resized/banner-resized-mobile.png">
+  <img src="https://raw.githubusercontent.com/yedoma-labs/assets/main/resized/banner-resized.png" alt="Project Header">
+</picture>
+
+[![CI](https://github.com/yedoma-labs/tiduu-shutdown/actions/workflows/ci.yml/badge.svg)](https://github.com/yedoma-labs/tiduu-shutdown/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/@yedoma-labs/tiduu-shutdown.svg)](https://www.npmjs.com/package/@yedoma-labs/tiduu-shutdown)
+[![TypeScript](https://img.shields.io/badge/TypeScript-7-blue.svg)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+> **tiduu** (*tiduu*) — Yakutian (Sakha) for "(noch zu bestätigen)"
+
+Framework-agnostic graceful shutdown for Node.js: ordered teardown with per-step deadlines and HTTP keep-alive draining.
 
 Zero runtime dependencies. Works with `node:http`, Express, Fastify, or anything that exposes an `http.Server`.
 
-## The problem
-
-Graceful shutdown in Node servers breaks in a few predictable ways:
-
-- **No `SIGTERM` handler.** The process dies immediately and in-flight requests are cut off. The load balancer answers them with a 502.
-- **`server.close()` waits for keep-alive sockets.** Before Node 19, its callback does not fire until idle sockets are closed by someone else. A shutdown that calls `close()` and waits on it hangs.
-- **Wrong order.** If the database pool closes before the HTTP server has drained, requests still in flight fail with query errors.
-- **No deadline.** The orchestrator sends `SIGKILL` before your drain finishes, and nothing has been logged.
-
-This library handles only the teardown: ordering, deadlines, socket handling, and exit codes. It does not do health checks.
+---
 
 ## Install
 
@@ -54,6 +57,17 @@ Attach the HTTP server right after you start listening, before it accepts connec
 
 Set your orchestrator's grace period above `timeoutMs`. For example, use `terminationGracePeriodSeconds` in Kubernetes, so the orchestrator does not send `SIGKILL` first.
 
+## The problem
+
+Graceful shutdown in Node servers breaks in a few predictable ways:
+
+- **No `SIGTERM` handler.** The process dies immediately and in-flight requests are cut off. The load balancer answers them with a 502.
+- **`server.close()` waits for keep-alive sockets.** Before Node 19, its callback does not fire until idle sockets are closed by someone else. A shutdown that calls `close()` and waits on it hangs.
+- **Wrong order.** If the database pool closes before the HTTP server has drained, requests still in flight fail with query errors.
+- **No deadline.** The orchestrator sends `SIGKILL` before your drain finishes, and nothing has been logged.
+
+This library handles only the teardown: ordering, deadlines, socket handling, and exit codes. It does not do health checks.
+
 ## API
 
 ```ts
@@ -80,7 +94,7 @@ const dispose = shutdown.installSignalHandlers(); // returns a function that rem
 - **Global deadline.** When `timeoutMs` for the whole shutdown elapses, the step that is running and every step still waiting are marked `timeout`. The report has `forced: true`.
 - **Second signal.** A signal received during shutdown stops the teardown immediately. The report has `forced: true`, and the process exits with `1`.
 - **Idempotent.** `run()` returns the same promise on every call. Calling `register()` after shutdown has started, or registering a duplicate name, throws.
-- **Exit codes.** Only signal-triggered shutdowns exit the process. `exit(0)` is used when every step succeeded and nothing was forced, `exit(1)` otherwise. Calling `run()` yourself never exits.
+- **Exit codes.** Only signal-triggered shutdowns exit the process. `exit(0)` is used when every step succeeded and nothing was forced, `exit(1)` otherwise. Calling `run()` yourself never exits, but a signal received afterwards still does.
 
 ### The report
 

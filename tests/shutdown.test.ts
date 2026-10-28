@@ -219,6 +219,42 @@ describe("signal handling", () => {
 		}
 	});
 
+	it("exits after a signal that arrives once a manual run() has already finished", async () => {
+		const { shutdown, exit } = create({ signals: ["SIGUSR2"] });
+		const close = vi.fn();
+		shutdown.register("db", close);
+		const dispose = shutdown.installSignalHandlers();
+
+		try {
+			await shutdown.run("manual");
+			process.emit("SIGUSR2", "SIGUSR2");
+			await vi.waitFor(() => expect(exit).toHaveBeenCalledWith(0));
+			expect(close).toHaveBeenCalledOnce();
+			expect(exit).toHaveBeenCalledOnce();
+		} finally {
+			dispose();
+		}
+	});
+
+	it("waits for a manual run() to finish on the first signal instead of forcing it", async () => {
+		const { shutdown, exit } = create({ signals: ["SIGUSR2"] });
+		const close = vi.fn(() => sleep(20));
+		shutdown.register("db", close);
+		const dispose = shutdown.installSignalHandlers();
+
+		try {
+			const running = shutdown.run("manual");
+			process.emit("SIGUSR2", "SIGUSR2");
+			const report = await running;
+			expect(report.forced).toBe(false);
+			expect(report.steps).toEqual([expect.objectContaining({ name: "db", status: "ok" })]);
+			await vi.waitFor(() => expect(exit).toHaveBeenCalledWith(0));
+			expect(exit).toHaveBeenCalledOnce();
+		} finally {
+			dispose();
+		}
+	});
+
 	it("removes its listeners when the dispose function is called", () => {
 		const { shutdown, exit } = create({ signals: ["SIGUSR1"] });
 		const close = vi.fn();
